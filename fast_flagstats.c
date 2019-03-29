@@ -1470,8 +1470,9 @@ int pospopcnt_u16_avx512_mula(const uint16_t* data, uint32_t len, uint32_t* flag
     const __m512i* data_vectors = (const __m512i*)(data);
     const uint32_t n_cycles = len / 32;
 
-    __m512i sum_lo = _mm512_setzero_si512();
-    __m512i sum_hi = _mm512_setzero_si512();
+    __m512i sum[16];
+    for (int i=0; i < 16; i++)
+        sum[i] = _mm512_setzero_si512();
 
     size_t i = 0;
     for (/**/; i + 2 <= n_cycles; i += 2) {
@@ -1481,54 +1482,57 @@ int pospopcnt_u16_avx512_mula(const uint16_t* data, uint32_t len, uint32_t* flag
         __m512i input0 = _mm512_or_si512(_mm512_and_si512(v0, _mm512_set1_epi16(0x00FF)), _mm512_slli_epi16(v1, 8));
         __m512i input1 = _mm512_or_si512(_mm512_and_si512(v0, _mm512_set1_epi16(0xFF00)), _mm512_srli_epi16(v1, 8));
      
-        const __m512i bits04_0 = _mm512_and_si512(input0, _mm512_set1_epi16(0x1111));
-        const __m512i bits15_0 = _mm512_and_si512(_mm512_srli_epi32(input0, 1), _mm512_set1_epi16(0x1111));
-        const __m512i bits26_0 = _mm512_and_si512(_mm512_srli_epi32(input0, 2), _mm512_set1_epi16(0x1111));
-        const __m512i bits37_0 = _mm512_and_si512(_mm512_srli_epi32(input0, 3), _mm512_set1_epi16(0x1111));
+        const __m512i bits_04 = _mm512_and_si512(input0, _mm512_set1_epi16(0x1111));
+        const __m512i bits_15 = _mm512_and_si512(_mm512_srli_epi32(input0, 1), _mm512_set1_epi16(0x1111));
+        const __m512i bits_26 = _mm512_and_si512(_mm512_srli_epi32(input0, 2), _mm512_set1_epi16(0x1111));
+        const __m512i bits_37 = _mm512_and_si512(_mm512_srli_epi32(input0, 3), _mm512_set1_epi16(0x1111));
 
-        const __m512i bits04_1 = _mm512_and_si512(input1, _mm512_set1_epi16(0x1111));
-        const __m512i bits15_1 = _mm512_and_si512(_mm512_srli_epi32(input1, 1), _mm512_set1_epi16(0x1111));
-        const __m512i bits26_1 = _mm512_and_si512(_mm512_srli_epi32(input1, 2), _mm512_set1_epi16(0x1111));
-        const __m512i bits37_1 = _mm512_and_si512(_mm512_srli_epi32(input1, 3), _mm512_set1_epi16(0x1111));
+        const __m512i bits_8c = _mm512_and_si512(input1, _mm512_set1_epi16(0x1111));
+        const __m512i bits_9d = _mm512_and_si512(_mm512_srli_epi32(input1, 1), _mm512_set1_epi16(0x1111));
+        const __m512i bits_ae = _mm512_and_si512(_mm512_srli_epi32(input1, 2), _mm512_set1_epi16(0x1111));
+        const __m512i bits_bf = _mm512_and_si512(_mm512_srli_epi32(input1, 3), _mm512_set1_epi16(0x1111));
 
-        const __m512i sum04_0 = _mm512_sad_epu8(bits04_0, _mm512_setzero_si512());
-        const __m512i sum15_0 = _mm512_sad_epu8(bits15_0, _mm512_setzero_si512());
-        const __m512i sum26_0 = _mm512_sad_epu8(bits26_0, _mm512_setzero_si512());
-        const __m512i sum37_0 = _mm512_sad_epu8(bits37_0, _mm512_setzero_si512());
+        const __m512i sum_04 = _mm512_sad_epu8(bits_04, _mm512_setzero_si512());
+        const __m512i sum_15 = _mm512_sad_epu8(bits_15, _mm512_setzero_si512());
+        const __m512i sum_26 = _mm512_sad_epu8(bits_26, _mm512_setzero_si512());
+        const __m512i sum_37 = _mm512_sad_epu8(bits_37, _mm512_setzero_si512());
 
-        const __m512i sum04_1 = _mm512_sad_epu8(bits04_1, _mm512_setzero_si512());
-        const __m512i sum15_1 = _mm512_sad_epu8(bits15_1, _mm512_setzero_si512());
-        const __m512i sum26_1 = _mm512_sad_epu8(bits26_1, _mm512_setzero_si512());
-        const __m512i sum37_1 = _mm512_sad_epu8(bits37_1, _mm512_setzero_si512());
+        const __m512i sum_8c = _mm512_sad_epu8(bits_8c, _mm512_setzero_si512());
+        const __m512i sum_9d = _mm512_sad_epu8(bits_9d, _mm512_setzero_si512());
+        const __m512i sum_ae = _mm512_sad_epu8(bits_ae, _mm512_setzero_si512());
+        const __m512i sum_bf = _mm512_sad_epu8(bits_bf, _mm512_setzero_si512());
 
-        sum_lo = _mm512_add_epi64(sum_lo, _mm512_and_si512(sum04_0, _mm512_set1_epi64(0xf)));
-        sum_lo = _mm512_add_epi64(sum_lo, _mm512_and_si512(sum15_0, _mm512_set1_epi64(0xf)));
-        sum_lo = _mm512_add_epi64(sum_lo, _mm512_and_si512(sum26_0, _mm512_set1_epi64(0xf)));
-        sum_lo = _mm512_add_epi64(sum_lo, _mm512_and_si512(sum37_0, _mm512_set1_epi64(0xf)));
-
-        sum_hi = _mm512_add_epi64(sum_hi, _mm512_srli_epi64(sum04_0, 4));
-        sum_hi = _mm512_add_epi64(sum_hi, _mm512_srli_epi64(sum15_0, 4));
-        sum_hi = _mm512_add_epi64(sum_hi, _mm512_srli_epi64(sum26_0, 4));
-        sum_hi = _mm512_add_epi64(sum_hi, _mm512_srli_epi64(sum37_0, 4));
-
-        sum_lo = _mm512_add_epi64(sum_lo, _mm512_and_si512(sum04_1, _mm512_set1_epi64(0xf)));
-        sum_lo = _mm512_add_epi64(sum_lo, _mm512_and_si512(sum15_1, _mm512_set1_epi64(0xf)));
-        sum_lo = _mm512_add_epi64(sum_lo, _mm512_and_si512(sum26_1, _mm512_set1_epi64(0xf)));
-        sum_lo = _mm512_add_epi64(sum_lo, _mm512_and_si512(sum37_1, _mm512_set1_epi64(0xf)));
-
-        sum_hi = _mm512_add_epi64(sum_hi, _mm512_srli_epi64(sum04_1, 4));
-        sum_hi = _mm512_add_epi64(sum_hi, _mm512_srli_epi64(sum15_1, 4));
-        sum_hi = _mm512_add_epi64(sum_hi, _mm512_srli_epi64(sum26_1, 4));
-        sum_hi = _mm512_add_epi64(sum_hi, _mm512_srli_epi64(sum37_1, 4));
+        sum[0x0] = _mm512_add_epi64(sum[0x0], _mm512_and_si512 (sum_04, _mm512_set1_epi64(0xf)));
+        sum[0x4] = _mm512_add_epi64(sum[0x4], _mm512_srli_epi32(sum_04, 4));
+        sum[0x1] = _mm512_add_epi64(sum[0x1], _mm512_and_si512 (sum_15, _mm512_set1_epi64(0xf)));
+        sum[0x5] = _mm512_add_epi64(sum[0x5], _mm512_srli_epi32(sum_15, 4));
+        sum[0x2] = _mm512_add_epi64(sum[0x2], _mm512_and_si512 (sum_26, _mm512_set1_epi64(0xf)));
+        sum[0x6] = _mm512_add_epi64(sum[0x6], _mm512_srli_epi32(sum_26, 4));
+        sum[0x3] = _mm512_add_epi64(sum[0x3], _mm512_and_si512 (sum_37, _mm512_set1_epi64(0xf)));
+        sum[0x7] = _mm512_add_epi64(sum[0x7], _mm512_srli_epi32(sum_37, 4));
+        sum[0x8] = _mm512_add_epi64(sum[0x8], _mm512_and_si512 (sum_8c, _mm512_set1_epi64(0xf)));
+        sum[0xc] = _mm512_add_epi64(sum[0xc], _mm512_srli_epi32(sum_8c, 4));
+        sum[0x9] = _mm512_add_epi64(sum[0x9], _mm512_and_si512 (sum_9d, _mm512_set1_epi64(0xf)));
+        sum[0xd] = _mm512_add_epi64(sum[0xd], _mm512_srli_epi32(sum_9d, 4));
+        sum[0xa] = _mm512_add_epi64(sum[0xa], _mm512_and_si512 (sum_ae, _mm512_set1_epi64(0xf)));
+        sum[0xe] = _mm512_add_epi64(sum[0xe], _mm512_srli_epi32(sum_ae, 4));
+        sum[0xb] = _mm512_add_epi64(sum[0xb], _mm512_and_si512 (sum_bf, _mm512_set1_epi64(0xf)));
+        sum[0xf] = _mm512_add_epi64(sum[0xf], _mm512_srli_epi32(sum_bf, 4));
     }
 
-    uint64_t tmp_lo[8];
-    uint64_t tmp_hi[8];
-    _mm512_storeu_si512((__m512i*)tmp_lo, sum_lo);
-    _mm512_storeu_si512((__m512i*)tmp_hi, sum_hi);
-    for (int j; j < 8; j++) {
-        flags[j + 0] = tmp_lo[j];
-        flags[j + 8] = tmp_hi[j];
+    for (int j; j < 16; j++) {
+        const __m128i dq0 = _mm512_extracti32x4_epi32(sum[j], 0);
+        const __m128i dq1 = _mm512_extracti32x4_epi32(sum[j], 1);
+        const __m128i dq2 = _mm512_extracti32x4_epi32(sum[j], 2);
+        const __m128i dq3 = _mm512_extracti32x4_epi32(sum[j], 3);
+        flags[j] = _mm_extract_epi64(dq0, 0)
+                 + _mm_extract_epi64(dq0, 1)
+                 + _mm_extract_epi64(dq1, 0)
+                 + _mm_extract_epi64(dq1, 1)
+                 + _mm_extract_epi64(dq2, 0)
+                 + _mm_extract_epi64(dq2, 1)
+                 + _mm_extract_epi64(dq3, 0)
+                 + _mm_extract_epi64(dq3, 1);
     }
 
     i *= 32;
